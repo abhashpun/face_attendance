@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { Container, Form, Button, Card, Alert } from 'react-bootstrap';
@@ -12,6 +12,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleChange = (e) => {
     setFormData({
@@ -28,7 +29,8 @@ function Login() {
     
     if (result.success) {
       toast.success('Login successful!');
-      navigate('/');
+      const next = searchParams.get('next');
+      navigate(next || '/dashboard', { replace: true });
     } else {
       toast.error(result.error);
     }
@@ -75,9 +77,12 @@ function Login() {
             </Form>
           </Card.Body>
         </Card>
-        
-        <div className="text-center mt-3">
-          <Link to="/register">Need an account? Register</Link>
+
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <Button variant="outline-secondary" onClick={() => navigate('/attendance')}>
+            ← Back to Attendance
+          </Button>
+          {/* <Link to="/register">Need an account? Register</Link> */}
         </div>
       </div>
     </Container>

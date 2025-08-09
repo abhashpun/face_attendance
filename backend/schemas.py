@@ -30,6 +30,7 @@ class StudentBase(BaseModel):
     student_id: str
     name: str
     email: str
+    semester: int | None = None
 
 class StudentCreate(StudentBase):
     face_encoding: List[float]

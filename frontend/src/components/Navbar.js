@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navbar, Nav, Container, Button } from 'react-bootstrap';
 
 function NavigationBar() {
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -21,23 +21,35 @@ function NavigationBar() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link as={Link} to="/">
-              Dashboard
-            </Nav.Link>
+            {isAuthenticated && (
+              <Nav.Link as={Link} to="/dashboard">
+                Dashboard
+              </Nav.Link>
+            )}
             <Nav.Link as={Link} to="/attendance">
               Mark Attendance
             </Nav.Link>
-            <Nav.Link as={Link} to="/students">
-              Students
-            </Nav.Link>
-            <Nav.Link as={Link} to="/history">
-              History
-            </Nav.Link>
+            {isAuthenticated && (
+              <Nav.Link as={Link} to="/students">
+                Students
+              </Nav.Link>
+            )}
+            {isAuthenticated && (
+              <Nav.Link as={Link} to="/history">
+                History
+              </Nav.Link>
+            )}
           </Nav>
           <Nav>
-            <Button variant="outline-light" onClick={handleLogout}>
-              Logout
-            </Button>
+            {isAuthenticated ? (
+              <Button variant="outline-light" onClick={handleLogout}>
+                Logout
+              </Button>
+            ) : (
+              <Button variant="outline-light" as={Link} to="/login">
+                Login
+              </Button>
+            )}
           </Nav>
         </Navbar.Collapse>
       </Container>

@@ -24,6 +24,7 @@ class Student(Base):
     student_id = Column(String, unique=True, index=True)
     name = Column(String)
     email = Column(String)
+    semester = Column(Integer, nullable=True)  # 1 to 8
     face_encoding = Column(ARRAY(Float))  # Store face encoding as array
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -37,7 +38,7 @@ class Attendance(Base):
     student_id = Column(String, ForeignKey("students.student_id"))
     date = Column(Date)
     time = Column(Time)
-    marked_by = Column(Integer, ForeignKey("users.id"))
+    marked_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

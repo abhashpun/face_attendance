@@ -33,9 +33,22 @@ function AttendanceMarking() {
       setResult({
         success: true,
         message: response.data.message,
-        students: response.data.recognized_students
+        recognized_students: response.data.recognized_students || [],
+        already_marked_students: response.data.already_marked_students || [],
+        unknown_faces_count: response.data.unknown_faces_count || 0
       });
-      toast.success(response.data.message);
+      
+      // Show appropriate toast based on the result
+      if (response.data.recognized_students && response.data.recognized_students.length > 0) {
+        toast.success(`Attendance marked for: ${response.data.recognized_students.join(', ')}`);
+      }
+      if (response.data.already_marked_students && response.data.already_marked_students.length > 0) {
+        toast.warning(`Attendance already done for: ${response.data.already_marked_students.join(', ')}`);
+      }
+      if (response.data.unknown_faces_count > 0) {
+        toast.error(`Unknown face detected (${response.data.unknown_faces_count} face(s))`);
+      }
+      window.dispatchEvent(new Event('stats:update'));
     } catch (error) {
       setResult({
         success: false,
@@ -125,22 +138,43 @@ function AttendanceMarking() {
                 <li>• Look directly at the camera</li>
                 <li>• Click "Capture Photo"</li>
                 <li>• Click "Mark Attendance" to submit</li>
+                <li>• System will detect unknown faces</li>
+                <li>• Duplicate attendance will be prevented</li>
               </ul>
               
               {result && (
                 <Alert variant={result.success ? 'success' : 'danger'} className="mt-3">
                   <Alert.Heading>
-                    {result.success ? 'Success!' : 'Error'}
+                    {result.success ? 'Result' : 'Error'}
                   </Alert.Heading>
                   <p>{result.message}</p>
-                  {result.students && (
-                    <div>
-                      <strong>Recognized students:</strong>
+                  
+                  {result.recognized_students && result.recognized_students.length > 0 && (
+                    <div className="mb-2">
+                      <strong className="text-success">✓ Attendance marked for:</strong>
                       <ul className="mb-0">
-                        {result.students.map((student, index) => (
+                        {result.recognized_students.map((student, index) => (
                           <li key={index}>{student}</li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+                  
+                  {result.already_marked_students && result.already_marked_students.length > 0 && (
+                    <div className="mb-2">
+                      <strong className="text-warning">⚠ Attendance already done for:</strong>
+                      <ul className="mb-0">
+                        {result.already_marked_students.map((student, index) => (
+                          <li key={index}>{student}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {result.unknown_faces_count > 0 && (
+                    <div className="mb-2">
+                      <strong className="text-danger">✗ Unknown faces detected:</strong>
+                      <p className="mb-0">{result.unknown_faces_count} face(s) not recognized</p>
                     </div>
                   )}
                 </Alert>

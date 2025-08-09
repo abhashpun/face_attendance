@@ -12,6 +12,7 @@ from datetime import datetime, date
 import base64
 from io import BytesIO
 from PIL import Image
+from sqlalchemy import text, func
 
 from database import get_db, engine
 import models
@@ -21,6 +22,15 @@ import face_utils
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
+# Ensure DB schema compatibility (best effort for existing DB)
+try:
+    with engine.connect() as conn:
+        # Make attendance.marked_by nullable
+        conn.execute(text("ALTER TABLE attendance ALTER COLUMN marked_by DROP NOT NULL"))
+        # Add students.semester if missing
+        conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS semester INTEGER"))
+except Exception:
+    pass
 
 app = FastAPI(title="Face Recognition Attendance System", version="1.0.0")
 
@@ -34,6 +44,8 @@ app.add_middleware(
 )
 
 security = HTTPBearer()
+# Optional bearer for public endpoints
+optional_security = HTTPBearer(auto_error=False)
 
 @app.post("/register", response_model=schemas.User)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -125,11 +137,16 @@ def delete_student(
 def mark_attendance(
     attendance_data: schemas.AttendanceMark,
     db: Session = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security)
 ):
     """Mark attendance using face recognition"""
-    token = credentials.credentials
-    current_user = auth.get_current_user(db, token)
+    current_user = None
+    if credentials and credentials.credentials:
+        try:
+            token = credentials.credentials
+            current_user = auth.get_current_user(db, token)
+        except Exception:
+            current_user = None
     
     # Decode base64 image
     try:
@@ -150,8 +167,12 @@ def mark_attendance(
         # Get all students
         students = db.query(models.Student).all()
         recognized_students = []
+        already_marked_students = []
+        unknown_faces_count = 0
         
         for face_encoding in face_encodings:
+            face_recognized = False
+            
             for student in students:
                 # Convert stored encoding back to numpy array
                 stored_encoding = np.array(student.face_encoding)
@@ -164,6 +185,7 @@ def mark_attendance(
                 )
                 
                 if matches[0]:
+                    face_recognized = True
                     # Check if attendance already marked today
                     today = date.today()
                     existing_attendance = db.query(models.Attendance).filter(
@@ -177,20 +199,43 @@ def mark_attendance(
                             student_id=student.student_id,
                             date=today,
                             time=datetime.now().time(),
-                            marked_by=current_user.id
+                            marked_by=(current_user.id if current_user else None)
                         )
                         db.add(attendance)
                         recognized_students.append(student.name)
+                    else:
+                        already_marked_students.append(student.name)
+                    break
+            
+            if not face_recognized:
+                unknown_faces_count += 1
         
         db.commit()
         
+        # Prepare response message
+        response_message = ""
+        response_data = {
+            "recognized_students": recognized_students,
+            "already_marked_students": already_marked_students,
+            "unknown_faces_count": unknown_faces_count
+        }
+        
         if recognized_students:
-            return {
-                "message": f"Attendance marked for: {', '.join(recognized_students)}",
-                "recognized_students": recognized_students
-            }
-        else:
+            response_message += f"Attendance marked for: {', '.join(recognized_students)}. "
+        
+        if already_marked_students:
+            response_message += f"Attendance already done for: {', '.join(already_marked_students)}. "
+        
+        if unknown_faces_count > 0:
+            response_message += f"Unknown face detected ({unknown_faces_count} face(s)). "
+        
+        if not recognized_students and not already_marked_students and unknown_faces_count == 0:
             raise HTTPException(status_code=400, detail="No recognized students found")
+        
+        return {
+            "message": response_message.strip(),
+            **response_data
+        }
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
@@ -250,21 +295,58 @@ def delete_attendance(
 @app.get("/stats")
 def get_stats(
     db: Session = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security)
 ):
-    """Get system statistics"""
-    token = credentials.credentials
-    current_user = auth.get_current_user(db, token)
-    
+    """Get system statistics, including semester-wise stats"""
+    # Optional auth
+    if credentials and credentials.credentials:
+        try:
+            _ = auth.get_current_user(db, credentials.credentials)
+        except Exception:
+            pass
+
     total_students = db.query(models.Student).count()
-    today_attendance = db.query(models.Attendance).filter(
-        models.Attendance.date == date.today()
-    ).count()
-    
+
+    # Count distinct students marked present today, only for students that still exist
+    today_attendance = (
+        db.query(models.Attendance.student_id)
+          .join(models.Student, models.Student.student_id == models.Attendance.student_id)
+          .filter(models.Attendance.date == date.today())
+          .distinct()
+          .count()
+    )
+
+    # Semester-wise totals and present today
+    semester_totals = dict(
+        db.query(models.Student.semester, func.count(models.Student.id))
+          .filter(models.Student.semester.isnot(None))
+          .group_by(models.Student.semester)
+          .all()
+    )
+    semester_present = dict(
+        db.query(models.Student.semester, func.count(func.distinct(models.Attendance.student_id)))
+          .join(models.Attendance, models.Attendance.student_id == models.Student.student_id)
+          .filter(models.Attendance.date == date.today())
+          .filter(models.Student.semester.isnot(None))
+          .group_by(models.Student.semester)
+          .all()
+    )
+
+    semester_stats = [
+        {
+            "semester": s,
+            "total": int(semester_totals.get(s, 0) or 0),
+            "present_today": int(semester_present.get(s, 0) or 0),
+            "attendance_rate": (int(semester_present.get(s, 0) or 0) / int(semester_totals.get(s, 0) or 1) * 100) if int(semester_totals.get(s, 0) or 0) > 0 else 0.0,
+        }
+        for s in range(1, 9)
+    ]
+
     return {
         "total_students": total_students,
         "today_attendance": today_attendance,
-        "attendance_rate": (today_attendance / total_students * 100) if total_students > 0 else 0
+        "attendance_rate": (today_attendance / total_students * 100) if total_students > 0 else 0,
+        "semester_stats": semester_stats,
     }
 
 if __name__ == "__main__":

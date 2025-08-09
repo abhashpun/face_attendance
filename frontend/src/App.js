@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -15,7 +15,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  const location = useLocation();
+  return isAuthenticated ? children : <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
 }
 
 function App() {
@@ -27,7 +28,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/" element={
+            <Route path="/" element={<Navigate to="/attendance" replace />} />
+            <Route path="/dashboard" element={
               <PrivateRoute>
                 <div>
                   <Navbar />
@@ -44,12 +46,10 @@ function App() {
               </PrivateRoute>
             } />
             <Route path="/attendance" element={
-              <PrivateRoute>
-                <div>
-                  <Navbar />
-                  <AttendanceMarking />
-                </div>
-              </PrivateRoute>
+              <div>
+                <Navbar />
+                <AttendanceMarking />
+              </div>
             } />
             <Route path="/history" element={
               <PrivateRoute>

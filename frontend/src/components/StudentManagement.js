@@ -19,11 +19,12 @@ function StudentManagement() {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
-  const [formData, setFormData] = useState({
-    student_id: '',
-    name: '',
-    email: ''
-  });
+      const [formData, setFormData] = useState({
+      student_id: '',
+      name: '',
+      email: '',
+      semester: 1
+    });
   
   const webcamRef = useRef(null);
 
@@ -66,6 +67,7 @@ function StudentManagement() {
 
       const studentData = {
         ...formData,
+        semester: Number(formData.semester),
         face_encoding: encodingResponse.data.encoding
       };
 
@@ -76,6 +78,7 @@ function StudentManagement() {
       setFormData({ student_id: '', name: '', email: '' });
       setCapturedImage(null);
       fetchStudents();
+      window.dispatchEvent(new Event('stats:update'));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add student');
     }
@@ -88,6 +91,7 @@ function StudentManagement() {
         await axios.delete(`/students/${studentId}`);
         toast.success('Student deleted successfully');
         fetchStudents();
+        window.dispatchEvent(new Event('stats:update'));
       } catch (error) {
         toast.error('Failed to delete student');
       }
@@ -181,6 +185,19 @@ function StudentManagement() {
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     required
                   />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Semester</Form.Label>
+                  <Form.Select
+                    value={formData.semester}
+                    onChange={(e) => setFormData({ ...formData, semester: Number(e.target.value) })}
+                    required
+                  >
+                    {[1,2,3,4,5,6,7,8].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
               </div>
               
