@@ -94,6 +94,8 @@ function Register() {
                 />
               </Form.Group>
               
+
+              
               <Button 
                 disabled={loading} 
                 className="w-100" 

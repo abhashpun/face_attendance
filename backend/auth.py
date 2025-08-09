@@ -36,6 +36,8 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
+
 def verify_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -45,6 +47,8 @@ def verify_token(token: str):
         return username
     except JWTError:
         return None
+
+
 
 def get_user(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
@@ -109,4 +113,6 @@ def get_current_user(db: Session, token: str):
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return user 
+    return user
+
+ 

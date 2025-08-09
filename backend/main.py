@@ -29,6 +29,7 @@ try:
         conn.execute(text("ALTER TABLE attendance ALTER COLUMN marked_by DROP NOT NULL"))
         # Add students.semester if missing
         conn.execute(text("ALTER TABLE students ADD COLUMN IF NOT EXISTS semester INTEGER"))
+
 except Exception:
     pass
 
@@ -238,7 +239,7 @@ def get_attendance(
     db: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Get attendance records"""
+    """Get attendance records with optional date filter"""
     token = credentials.credentials
     current_user = auth.get_current_user(db, token)
     
