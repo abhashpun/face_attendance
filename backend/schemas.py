@@ -50,9 +50,10 @@ class AttendanceResponse(BaseModel):
     id: int
     student_id: str
     student_name: str
+    student_semester: int | None = None
     date: date
     time: time
-    marked_by: int
+    marked_by: int | None = None
     
     class Config:
         from_attributes = True

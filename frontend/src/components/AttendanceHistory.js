@@ -48,12 +48,13 @@ function AttendanceHistory() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Student ID', 'Student Name', 'Date', 'Time'];
+    const headers = ['Student ID', 'Student Name', 'Semester', 'Date', 'Time'];
     const csvContent = [
       headers.join(','),
       ...attendance.map(record => [
         record.student_id,
         record.student_name,
+        record.student_semester ?? '',
         record.date,
         record.time
       ].join(','))
@@ -119,6 +120,7 @@ function AttendanceHistory() {
               <tr>
                 <th>Student ID</th>
                 <th>Student Name</th>
+                <th>Semester</th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Actions</th>
@@ -135,13 +137,14 @@ function AttendanceHistory() {
                 attendance.map((record) => (
                   <tr key={record.id}>
                     <td>{record.student_id}</td>
-                    <td>{record.student_name}</td>
-                    <td>
-                      <Badge bg="info">
-                        {format(new Date(record.date), 'MMM dd, yyyy')}
-                      </Badge>
-                    </td>
-                    <td>{record.time}</td>
+                                      <td>{record.student_name}</td>
+                  <td>{record.student_semester ?? '-'}</td>
+                  <td>
+                    <Badge bg="info">
+                      {format(new Date(record.date), 'MMM dd, yyyy')}
+                    </Badge>
+                  </td>
+                  <td>{record.time}</td>
                     <td>
                       <Button
                         variant="danger"

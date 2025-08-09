@@ -121,6 +121,7 @@ function StudentManagement() {
                 <th>Student ID</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Semester</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -131,6 +132,7 @@ function StudentManagement() {
                   <td>{student.student_id}</td>
                   <td>{student.name}</td>
                   <td>{student.email}</td>
+                  <td>{student.semester ?? '-'}</td>
                   <td>{new Date(student.created_at).toLocaleDateString()}</td>
                   <td>
                     <Button

@@ -164,50 +164,42 @@ def mark_attendance(
         if not face_encodings:
             raise HTTPException(status_code=400, detail="No face detected in image")
         
-        # Get all students
+        # Get all students and precompute arrays
         students = db.query(models.Student).all()
+        student_encodings = [np.array(s.face_encoding) for s in students]
         recognized_students = []
         already_marked_students = []
         unknown_faces_count = 0
+
+        tolerance = 0.6
         
         for face_encoding in face_encodings:
-            face_recognized = False
-            
-            for student in students:
-                # Convert stored encoding back to numpy array
-                stored_encoding = np.array(student.face_encoding)
-                
-                # Compare faces
-                matches = face_recognition.compare_faces(
-                    [stored_encoding], 
-                    face_encoding, 
-                    tolerance=0.6
-                )
-                
-                if matches[0]:
-                    face_recognized = True
-                    # Check if attendance already marked today
-                    today = date.today()
-                    existing_attendance = db.query(models.Attendance).filter(
-                        models.Attendance.student_id == student.student_id,
-                        models.Attendance.date == today
-                    ).first()
-                    
-                    if not existing_attendance:
-                        # Mark attendance
-                        attendance = models.Attendance(
-                            student_id=student.student_id,
-                            date=today,
-                            time=datetime.now().time(),
-                            marked_by=(current_user.id if current_user else None)
-                        )
-                        db.add(attendance)
-                        recognized_students.append(student.name)
-                    else:
-                        already_marked_students.append(student.name)
-                    break
-            
-            if not face_recognized:
+            if not student_encodings:
+                unknown_faces_count += 1
+                continue
+            # Compute distances to all known encodings and pick best match
+            distances = face_recognition.face_distance(student_encodings, face_encoding)
+            best_idx = int(np.argmin(distances)) if len(distances) > 0 else -1
+            if best_idx >= 0 and distances[best_idx] <= tolerance:
+                matched_student = students[best_idx]
+                # Check duplicate attendance today
+                today = date.today()
+                existing_attendance = db.query(models.Attendance).filter(
+                    models.Attendance.student_id == matched_student.student_id,
+                    models.Attendance.date == today
+                ).first()
+                if not existing_attendance:
+                    attendance = models.Attendance(
+                        student_id=matched_student.student_id,
+                        date=today,
+                        time=datetime.now().time(),
+                        marked_by=(current_user.id if current_user else None)
+                    )
+                    db.add(attendance)
+                    recognized_students.append(matched_student.name)
+                else:
+                    already_marked_students.append(matched_student.name)
+            else:
                 unknown_faces_count += 1
         
         db.commit()
@@ -263,6 +255,7 @@ def get_attendance(
             id=record.id,
             student_id=record.student_id,
             student_name=record.student.name,
+            student_semester=record.student.semester,
             date=record.date,
             time=record.time,
             marked_by=record.marked_by
