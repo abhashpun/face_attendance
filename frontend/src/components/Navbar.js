@@ -39,6 +39,11 @@ function NavigationBar() {
                 History
               </Nav.Link>
             )}
+            {isAuthenticated && (
+              <Nav.Link as={Link} to="/training">
+                AI Training
+              </Nav.Link>
+            )}
           </Nav>
           <Nav>
             {isAuthenticated ? (

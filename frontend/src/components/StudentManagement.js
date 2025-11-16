@@ -75,7 +75,7 @@ function StudentManagement() {
       
       toast.success('Student added successfully');
       setShowModal(false);
-      setFormData({ student_id: '', name: '', email: '' });
+      setFormData({ student_id: '', name: '', email: '', semester: 1 });
       setCapturedImage(null);
       fetchStudents();
       window.dispatchEvent(new Event('stats:update'));

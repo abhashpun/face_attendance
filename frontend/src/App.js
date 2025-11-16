@@ -10,6 +10,7 @@ import Dashboard from './components/Dashboard';
 import StudentManagement from './components/StudentManagement';
 import AttendanceMarking from './components/AttendanceMarking';
 import AttendanceHistory from './components/AttendanceHistory';
+import TrainingDashboard from './components/TrainingDashboard';
 import Navbar from './components/Navbar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -56,6 +57,14 @@ function App() {
                 <div>
                   <Navbar />
                   <AttendanceHistory />
+                </div>
+              </PrivateRoute>
+            } />
+            <Route path="/training" element={
+              <PrivateRoute>
+                <div>
+                  <Navbar />
+                  <TrainingDashboard />
                 </div>
               </PrivateRoute>
             } />

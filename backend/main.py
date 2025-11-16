@@ -1,3 +1,4 @@
+#python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,7 @@ import models
 import schemas
 import auth
 import face_utils
+import training_system
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -92,6 +94,7 @@ def create_student(
         student_id=student.student_id,
         name=student.name,
         email=student.email,
+        semester=student.semester,
         face_encoding=student.face_encoding
     )
     db.add(db_student)
@@ -342,6 +345,87 @@ def get_stats(
         "attendance_rate": (today_attendance / total_students * 100) if total_students > 0 else 0,
         "semester_stats": semester_stats,
     }
+
+# Training System Endpoints
+@app.post("/training/collect-data")
+def collect_training_data(
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Collect training data from database"""
+    token = credentials.credentials
+    current_user = auth.get_current_user(db, token)
+    training_sys = training_system.FaceTrainingSystem(db)
+    return training_sys.collect_training_data()
+
+@app.post("/training/train-model")
+def train_model(
+    model_type: str = "svm",
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Train face recognition model"""
+    token = credentials.credentials
+    current_user = auth.get_current_user(db, token)
+    training_sys = training_system.FaceTrainingSystem(db)
+    return training_sys.train_model(model_type)
+
+@app.get("/training/performance")
+def get_model_performance(
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get model performance metrics"""
+    token = credentials.credentials
+    current_user = auth.get_current_user(db, token)
+    training_sys = training_system.FaceTrainingSystem(db)
+    return training_sys.evaluate_model_performance()
+
+@app.get("/training/recommendations")
+def get_training_recommendations(
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get training recommendations"""
+    token = credentials.credentials
+    current_user = auth.get_current_user(db, token)
+    training_sys = training_system.FaceTrainingSystem(db)
+    return training_sys.get_training_recommendations()
+
+@app.get("/training/data-statistics")
+def get_data_statistics(
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get comprehensive data statistics"""
+    token = credentials.credentials
+    current_user = auth.get_current_user(db, token)
+    analyzer = training_system.DataQualityAnalyzer(db)
+    return analyzer.get_data_statistics()
+
+@app.post("/training/analyze-face-quality")
+def analyze_face_quality(
+    face_encoding: List[float],
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Analyze quality of face encoding"""
+    token = credentials.credentials
+    current_user = auth.get_current_user(db, token)
+    analyzer = training_system.DataQualityAnalyzer(db)
+    return analyzer.analyze_face_quality(face_encoding)
+
+@app.post("/training/predict-face")
+def predict_face_with_model(
+    face_encoding: List[float],
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Predict student using trained model"""
+    token = credentials.credentials
+    current_user = auth.get_current_user(db, token)
+    training_sys = training_system.FaceTrainingSystem(db)
+    return training_sys.predict_face(face_encoding)
 
 if __name__ == "__main__":
     import uvicorn
